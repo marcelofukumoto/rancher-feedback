@@ -1,0 +1,78 @@
+# Aggregates Feedback permissions into the built-in admin/edit/view roles, so anyone
+# who can already edit resources in the rancher-feedback namespace can file feedback.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rancher-feedback-aggregate-edit
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+  - apiGroups: ["feedback.rancher.io"]
+    resources: ["feedbacks"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["feedback.rancher.io"]
+    resources: ["feedbacks/status"]
+    verbs: ["get", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rancher-feedback-aggregate-view
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+  - apiGroups: ["feedback.rancher.io"]
+    resources: ["feedbacks", "feedbacks/status"]
+    verbs: ["get", "list", "watch"]
+---
+# Lets any logged-in Rancher user file feedback (create + read their own), without
+# granting them anything else in the cluster. Drop this pair if you'd rather gate
+# feedback behind an explicit RoleBinding.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rancher-feedback-submitter
+rules:
+  - apiGroups: ["feedback.rancher.io"]
+    resources: ["feedbacks"]
+    verbs: ["get", "list", "watch", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rancher-feedback-submitter
+  namespace: rancher-feedback
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rancher-feedback-submitter
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:authenticated
+---
+# The extension must be able to discover whether the CRD exists before it can offer to
+# create it. Reading CRDs is harmless; creating them is admin-only and intentionally
+# not granted here.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rancher-feedback-crd-reader
+rules:
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rancher-feedback-crd-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rancher-feedback-crd-reader
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:authenticated

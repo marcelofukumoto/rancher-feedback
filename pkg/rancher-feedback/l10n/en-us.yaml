@@ -1,0 +1,110 @@
+rancherFeedback:
+  product:
+    label: Feedback
+
+  header:
+    label: Feedback
+    tooltip: Send feedback about this screen (Ctrl/Cmd + F)
+
+  dialog:
+    title: Send feedback
+    message: What would you like changed?
+    messagePlaceholder: >-
+      Describe the change you want. Point at it in the screenshot with an arrow — the
+      more specific you are, the better the result.
+    branch: Branch
+    branchPlaceholder: e.g. main
+    branchTooltip: The git branch the change should be committed to. Leave empty to let the agent decide.
+    recaptureConfirm: >-
+      Re-capturing replaces the current image and discards your annotations. Continue?
+    captureFailed: >-
+      The screen couldn't be captured automatically. Take a screenshot manually instead —
+      your browser will ask which tab to share.
+    takeScreenshot: Take screenshot
+    context:
+      product: Product
+      cluster: Cluster
+      route: Route
+
+  editor:
+    toolsLabel: Annotation tools
+    strokeWidth: 'Stroke width: {width}px'
+    undo: Undo
+    redo: Redo
+    reset: Clear all annotations
+    recapture: Re-capture at full fidelity
+    applyCrop: Apply crop
+    tool:
+      select: Select and move
+      pen: Freehand
+      arrow: Arrow
+      rect: Rectangle
+      text: Text
+      redact: Redact
+      crop: Crop
+    hint:
+      select: Click an annotation to move, resize or recolour it.
+      pen: Drag to draw freehand.
+      arrow: Drag from the description to the thing you are describing.
+      rect: Drag to outline an area.
+      text: Click to place a text label, then type.
+      redact: Drag over anything secret. These pixels are permanently painted over before the image is saved.
+      crop: Drag to select the region to keep, then choose Apply crop.
+
+  prereqs:
+    installable: >-
+      The Feedback custom resource is not installed on this cluster yet. Install it to
+      start sending feedback. This creates the CRD and the {namespace} namespace.
+    askAdmin: >-
+      The Feedback custom resource is not installed on this cluster, and you do not have
+      permission to create it. Ask a cluster admin to apply deploy/crd.yaml, or to open
+      this dialog once.
+    updatable: >-
+      A newer version of the Feedback schema is available (it adds the deployed preview
+      URL). Update it to keep the agent's results in sync.
+
+  errors:
+    tooLarge: >-
+      The screenshot is still {actual}KB after compression, over the {budget}KB limit.
+      Crop it to the area that matters and try again.
+    forbidden: You do not have permission to create feedback in this cluster.
+
+  detail:
+    request: Request
+    screenshot: Screenshot
+    screenshotAlt: Annotated screenshot submitted with this feedback
+    noScreenshot: This feedback has no screenshot attached.
+    context: Context
+    url: URL
+    submittedBy: Submitted by
+    agent: Agent
+    awaitingAgent: Waiting for the agent to pick this up.
+    phase: Phase
+    agentMessage: Message
+    commit: Commit
+    pullRequest: Pull request
+    preview: Preview URL
+    openPreview: Open preview
+
+  table:
+    message: Request
+    product: Product
+    submittedBy: Submitted by
+    preview: Preview
+
+asyncButton:
+  feedbackSubmit:
+    action: Send feedback
+    waiting: Sending…
+    success: Sent
+    error: Failed
+  feedbackInstall:
+    action: Install prerequisites
+    waiting: Installing…
+    success: Installed
+    error: Failed
+  feedbackUpdate:
+    action: Update schema
+    waiting: Updating…
+    success: Updated
+    error: Failed

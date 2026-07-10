@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rancher-feedback
+  labels:
+    app.kubernetes.io/name: rancher-feedback
+    app.kubernetes.io/part-of: rancher-feedback
