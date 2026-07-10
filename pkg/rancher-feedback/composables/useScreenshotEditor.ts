@@ -2,7 +2,7 @@ import {
   Canvas, FabricImage, FabricObject, IText, Path, PencilBrush, Rect, util,
 } from 'fabric';
 import {
-  onBeforeUnmount, onMounted, ref, watch, type Ref
+  computed, onBeforeUnmount, onMounted, ref, watch, type ComputedRef, type Ref
 } from 'vue';
 
 import { HISTORY_LIMIT } from '../types/constants';
@@ -19,6 +19,14 @@ const CROP_MARQUEE = 'isCropMarquee';
 
 const DEFAULT_COLOR = '#e02020';
 const DEFAULT_STROKE_WIDTH = 4;
+
+/**
+ * User zoom multiplier applied on top of the fit-to-stage scale. 1 = fit (shown as 100%);
+ * zooming in grows the canvas past the stage, which then scrolls to pan.
+ */
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 8;
+const ZOOM_STEP = 1.25;
 
 /**
  * A history entry. Deliberately stores the annotation objects and the background's crop
@@ -46,11 +54,17 @@ export interface ScreenshotEditor {
   canRedo: Ref<boolean>;
   canApplyCrop: Ref<boolean>;
   loading: Ref<boolean>;
+  zoomPercent: ComputedRef<number>;
+  canZoomIn: ComputedRef<boolean>;
+  canZoomOut: ComputedRef<boolean>;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
   reset: () => Promise<void>;
   applyCrop: () => void;
   cancelCrop: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  zoomReset: () => void;
   exportCanvas: () => HTMLCanvasElement;
 }
 
@@ -73,6 +87,11 @@ export function useScreenshotEditor(options: UseScreenshotEditorOptions): Screen
   const canRedo = ref(false);
   const canApplyCrop = ref(false);
   const loading = ref(true);
+  const userZoom = ref(1);
+
+  const zoomPercent = computed(() => Math.round(userZoom.value * 100));
+  const canZoomIn = computed(() => userZoom.value < MAX_ZOOM - 1e-3);
+  const canZoomOut = computed(() => userZoom.value > MIN_ZOOM + 1e-3);
 
   let canvas: Canvas;
   let bgImage: FabricImage;
@@ -80,6 +99,8 @@ export function useScreenshotEditor(options: UseScreenshotEditorOptions): Screen
   let historyIndex = -1;
   let imageWidth = 0;
   let imageHeight = 0;
+  /** Scale that fits the whole image in the stage; the zoom baseline (userZoom = 1). */
+  let baseZoom = 1;
 
   let suppressHistory = false;
   let restoring = false;
@@ -215,6 +236,7 @@ export function useScreenshotEditor(options: UseScreenshotEditorOptions): Screen
     imageHeight = img.height;
     history = [];
     historyIndex = -1;
+    userZoom.value = 1;
 
     fit();
     applyTool(tool.value);
@@ -225,7 +247,7 @@ export function useScreenshotEditor(options: UseScreenshotEditorOptions): Screen
     pushHistory();
   }
 
-  /** Scale the canvas so the whole image fits the stage; never magnify past 1:1. */
+  /** Recompute the fit-to-stage baseline, then re-apply the current user zoom. */
   function fit() {
     const stage = stageEl.value;
 
@@ -233,15 +255,84 @@ export function useScreenshotEditor(options: UseScreenshotEditorOptions): Screen
       return;
     }
 
-    const zoom = Math.min(
+    baseZoom = Math.min(
       stage.clientWidth / imageWidth,
       stage.clientHeight / imageHeight,
       1,
     );
 
-    canvas.setDimensions({ width: imageWidth * zoom, height: imageHeight * zoom });
+    applyZoom();
+  }
+
+  /**
+   * Sizes the canvas to `baseZoom * userZoom` and keeps a chosen point fixed on screen —
+   * the cursor for wheel zoom, the viewport centre for the buttons — by adjusting the
+   * stage's scroll. When userZoom is 1 the canvas fits the stage and there is nothing to
+   * scroll.
+   */
+  function applyZoom(anchorClientX?: number, anchorClientY?: number) {
+    const stage = stageEl.value;
+
+    if (!stage || !imageWidth) {
+      return;
+    }
+
+    const oldW = canvas.getWidth() || 1;
+    const oldH = canvas.getHeight() || 1;
+    const rect = stage.getBoundingClientRect();
+    const ax = (anchorClientX ?? rect.left + stage.clientWidth / 2) - rect.left;
+    const ay = (anchorClientY ?? rect.top + stage.clientHeight / 2) - rect.top;
+
+    // Fraction of the content under the anchor, before resizing.
+    const fx = (stage.scrollLeft + ax) / oldW;
+    const fy = (stage.scrollTop + ay) / oldH;
+
+    const zoom = baseZoom * userZoom.value;
+    const newW = imageWidth * zoom;
+    const newH = imageHeight * zoom;
+
+    canvas.setDimensions({ width: newW, height: newH });
     canvas.setZoom(zoom);
     canvas.requestRenderAll();
+
+    // Put the same content fraction back under the anchor.
+    stage.scrollLeft = fx * newW - ax;
+    stage.scrollTop = fy * newH - ay;
+  }
+
+  function setZoom(next: number, anchorClientX?: number, anchorClientY?: number) {
+    const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
+
+    if (clamped === userZoom.value) {
+      return;
+    }
+
+    userZoom.value = clamped;
+    applyZoom(anchorClientX, anchorClientY);
+  }
+
+  function zoomIn() {
+    setZoom(userZoom.value * ZOOM_STEP);
+  }
+
+  function zoomOut() {
+    setZoom(userZoom.value / ZOOM_STEP);
+  }
+
+  function zoomReset() {
+    setZoom(1);
+  }
+
+  /** Ctrl/Cmd + wheel zooms toward the cursor; a plain wheel scrolls (pans) the stage. */
+  function onWheel(e: WheelEvent) {
+    if (!e.ctrlKey && !e.metaKey) {
+      return;
+    }
+
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+
+    setZoom(userZoom.value * factor, e.clientX, e.clientY);
   }
 
   /* ---------------------------------------------------------------------- tools */
@@ -583,10 +674,13 @@ export function useScreenshotEditor(options: UseScreenshotEditorOptions): Screen
 
     resizeObserver = new ResizeObserver(() => fit());
     resizeObserver.observe(stageEl.value!);
+    // passive:false so Ctrl/Cmd + wheel can preventDefault the browser's page zoom.
+    stageEl.value!.addEventListener('wheel', onWheel, { passive: false });
   });
 
   onBeforeUnmount(() => {
     resizeObserver?.disconnect();
+    stageEl.value?.removeEventListener('wheel', onWheel);
     // Fabric attaches document-level listeners; disposing is not optional.
     canvas?.dispose();
   });
@@ -606,11 +700,17 @@ export function useScreenshotEditor(options: UseScreenshotEditorOptions): Screen
     canRedo,
     canApplyCrop,
     loading,
+    zoomPercent,
+    canZoomIn,
+    canZoomOut,
     undo,
     redo,
     reset,
     applyCrop,
     cancelCrop,
+    zoomIn,
+    zoomOut,
+    zoomReset,
     exportCanvas,
   };
 }

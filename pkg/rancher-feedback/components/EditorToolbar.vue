@@ -32,6 +32,9 @@ const props = defineProps<{
   canRedo: boolean;
   /** True once a crop marquee exists and can be applied. */
   canApplyCrop: boolean;
+  zoomPercent: number;
+  canZoomIn: boolean;
+  canZoomOut: boolean;
   busy: boolean;
 }>();
 
@@ -42,6 +45,9 @@ const emit = defineEmits<{
   (e: 'apply-crop'): void;
   (e: 'cancel-crop'): void;
   (e: 'recapture'): void;
+  (e: 'zoom-in'): void;
+  (e: 'zoom-out'): void;
+  (e: 'zoom-reset'): void;
 }>();
 
 const tool = defineModel<Tool>('tool', { required: true });
@@ -211,6 +217,44 @@ const toolLabel = (candidate: Tool): string => i18n.t(`rancherFeedback.editor.to
       </button>
     </div>
 
+    <div class="group zoom-group">
+      <button
+        type="button"
+        class="tool-btn"
+        :disabled="!props.canZoomOut || props.busy"
+        :title="i18n.t('rancherFeedback.editor.zoomOut')"
+        :aria-label="i18n.t('rancherFeedback.editor.zoomOut')"
+        data-testid="feedback-editor-zoom-out"
+        @click="emit('zoom-out')"
+      >
+        <i class="icon icon-minus" />
+      </button>
+
+      <button
+        type="button"
+        class="zoom-label"
+        :disabled="props.busy"
+        :title="i18n.t('rancherFeedback.editor.zoomReset')"
+        :aria-label="i18n.t('rancherFeedback.editor.zoomReset')"
+        data-testid="feedback-editor-zoom-reset"
+        @click="emit('zoom-reset')"
+      >
+        {{ props.zoomPercent }}%
+      </button>
+
+      <button
+        type="button"
+        class="tool-btn"
+        :disabled="!props.canZoomIn || props.busy"
+        :title="i18n.t('rancherFeedback.editor.zoomIn')"
+        :aria-label="i18n.t('rancherFeedback.editor.zoomIn')"
+        data-testid="feedback-editor-zoom-in"
+        @click="emit('zoom-in')"
+      >
+        <i class="icon icon-plus" />
+      </button>
+    </div>
+
     <div
       v-if="tool === 'crop'"
       class="group crop-actions"
@@ -343,6 +387,28 @@ const toolLabel = (candidate: Tool): string => i18n.t(`rancherFeedback.editor.to
   display: block;
   border-radius: 50%;
   background: var(--body-text);
+}
+
+.zoom-label {
+  min-width: 46px;
+  height: 30px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: var(--border-radius);
+  background: transparent;
+  color: var(--body-text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-btn);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }
 
 .crop-actions {

@@ -191,11 +191,15 @@ import { MANAGEMENT, NORMAN, CATALOG, SECRET, EXT } from '@shell/config/types';
 - **Keep fabric/canvas objects out of reactive state**: store them in `<script setup>`
   closure variables or a composable, never in `data()`/`ref()` — Vue's proxy wraps the
   object graph fabric walks each render. Expose only primitive flags as refs.
-- **DOM-to-image capture: use html2canvas, not html-to-image.** Verified against a live
-  Rancher dashboard (Playwright + pixel measurement): html-to-image renders `<button>`
-  controls ~39px too low (it redraws the DOM into an SVG `foreignObject`, which doesn't
-  reproduce a button's internal vertical centering), while html2canvas reproduced the
-  same buttons within 1px. If a silent capture still isn't faithful enough, fall back to
+- **DOM-to-image capture: use `html2canvas-pro`, not html-to-image or stock html2canvas.**
+  Verified against a live Rancher dashboard (Playwright + pixel measurement): html-to-image
+  renders `<button>` controls ~39px too low (it redraws the DOM into an SVG `foreignObject`,
+  which doesn't reproduce a button's internal vertical centering), while html2canvas puts
+  them within 1px. But **stock html2canvas (1.4.1, unmaintained) throws `Attempting to
+  parse an unsupported color function "color"`** on Rancher's SUSE theme, which uses CSS
+  `color(display-p3 …)` / `oklch()`. The maintained fork `html2canvas-pro` is a drop-in
+  (same API, same `window.html2canvas` global) that parses those functions — confirmed in
+  isolation: stock throws, pro returns a canvas. If a silent capture still isn't faithful enough, fall back to
   a true screenshot via `navigator.mediaDevices.getDisplayMedia({ preferCurrentTab: true })`
   — pixel-perfect, at the cost of a one-click "Share this tab" prompt.
 - **Don't force a schema reload after creating/updating a CRD on Rancher 2.15.**

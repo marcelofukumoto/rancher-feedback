@@ -24,7 +24,8 @@ const imageRef = ref(props.image);
 
 const {
   tool, color, strokeWidth, canUndo, canRedo, canApplyCrop, loading,
-  undo, redo, reset, applyCrop, cancelCrop, exportCanvas,
+  zoomPercent, canZoomIn, canZoomOut,
+  undo, redo, reset, applyCrop, cancelCrop, zoomIn, zoomOut, zoomReset, exportCanvas,
 } = useScreenshotEditor({
   canvasEl, stageEl, image: imageRef
 });
@@ -50,6 +51,9 @@ defineExpose({ exportCanvas });
       :can-undo="canUndo"
       :can-redo="canRedo"
       :can-apply-crop="canApplyCrop"
+      :zoom-percent="zoomPercent"
+      :can-zoom-in="canZoomIn"
+      :can-zoom-out="canZoomOut"
       :busy="props.busy || loading"
       @undo="undo"
       @redo="redo"
@@ -57,6 +61,9 @@ defineExpose({ exportCanvas });
       @apply-crop="applyCrop"
       @cancel-crop="cancelCrop"
       @recapture="emit('recapture')"
+      @zoom-in="zoomIn"
+      @zoom-out="zoomOut"
+      @zoom-reset="zoomReset"
     />
 
     <div
@@ -82,8 +89,10 @@ defineExpose({ exportCanvas });
 
 .stage {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  // `safe` centres when the canvas fits, but aligns to the start when it's zoomed larger
+  // than the stage — without it, the classic flex + overflow bug clips the top/left.
+  align-items: safe center;
+  justify-content: safe center;
   // Bounds the canvas so fit() has a stable box to scale into.
   height: 58vh;
   min-height: 320px;
@@ -91,9 +100,12 @@ defineExpose({ exportCanvas });
   border: 1px solid var(--border);
   border-radius: var(--border-radius);
   background: var(--nav-bg);
-  overflow: hidden;
+  // Scroll to pan when zoomed past the fit size.
+  overflow: auto;
 
   :deep(.canvas-container) {
+    // Don't let flex stretch/shrink the canvas; keep it at its intrinsic zoomed size.
+    flex: 0 0 auto;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
   }
 }

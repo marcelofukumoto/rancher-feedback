@@ -53,17 +53,20 @@ function canvasToCaptured(canvas: HTMLCanvasElement): CapturedImage {
 }
 
 /**
- * Renders the live DOM to a canvas with html2canvas. Silent — no permission prompt and
- * no screen-share indicator.
+ * Renders the live DOM to a canvas. Silent — no permission prompt and no screen-share
+ * indicator.
  *
- * We use html2canvas rather than an SVG/`foreignObject` renderer (html-to-image) because
- * that approach mis-places form controls: verified against a live Rancher dashboard, its
- * buttons rendered ~39px too low, while html2canvas reproduced them to within 1px.
+ * We use html2canvas-pro rather than an SVG/`foreignObject` renderer (html-to-image),
+ * which mis-places form controls: verified on a live Rancher dashboard, that approach
+ * put buttons ~39px too low while html2canvas reproduces them within 1px. And we use the
+ * *pro* fork rather than stock html2canvas because stock throws "Attempting to parse an
+ * unsupported color function 'color'" on Rancher's SUSE theme, which uses CSS `color()`
+ * and `oklch()`; the fork parses both.
  *
- * html2canvas is loaded on demand so it stays out of the extension's entry chunk.
+ * Loaded on demand so it stays out of the extension's entry chunk.
  */
 export async function captureDom(target: HTMLElement = captureTarget()): Promise<CapturedImage> {
-  const { default: html2canvas } = await import(/* webpackChunkName: "html2canvas" */ 'html2canvas');
+  const { default: html2canvas } = await import(/* webpackChunkName: "html2canvas" */ 'html2canvas-pro');
 
   const canvas = await html2canvas(target, {
     scale:           Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO),

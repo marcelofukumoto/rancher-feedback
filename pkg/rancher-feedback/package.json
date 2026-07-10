@@ -1,7 +1,7 @@
 {
   "name": "rancher-feedback",
   "description": "Capture a screenshot of any Rancher screen, annotate it, and file it as a Feedback custom resource for a downstream agent to act on.",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": false,
   "icon": "https://raw.githubusercontent.com/rancher/rancher-feedback/main/pkg/rancher-feedback/icon.svg",
   "rancher": {

@@ -33,6 +33,9 @@ rancherFeedback:
     redo: Redo
     reset: Clear all annotations
     recapture: Re-capture at full fidelity
+    zoomIn: Zoom in
+    zoomOut: Zoom out
+    zoomReset: 'Reset zoom to fit (Ctrl/Cmd + scroll to zoom)'
     applyCrop: Apply crop
     tool:
       select: Select and move
