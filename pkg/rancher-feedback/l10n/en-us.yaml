@@ -4,7 +4,9 @@ rancherFeedback:
 
   header:
     label: Feedback
-    tooltip: Send feedback about this screen (Ctrl/Cmd + F)
+    # The shell auto-appends the keyboard-shortcut label (⌘-Shift-F / Ctrl-Shift-F) from
+    # the action's `shortcut` definition, so don't hard-code the combo here.
+    tooltip: Send feedback about this screen
 
   dialog:
     title: Send feedback
