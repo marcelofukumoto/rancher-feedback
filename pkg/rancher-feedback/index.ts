@@ -29,7 +29,10 @@ export default function(plugin: IPlugin): void {
       labelKey:   'rancherFeedback.header.label',
       tooltipKey: 'rancherFeedback.header.tooltip',
       tooltip:    'Send feedback about this screen',
-      shortcut:   'f',
+      // ⌘⇧F / Ctrl+Shift+F — the object form avoids the plain ⌘F/Ctrl+F collision with
+      // the browser's Find. Rancher's shell (plugin-helpers.ts) passes the object straight
+      // through as the shortkey and renders the tooltip label as `(⌘-Shift-F)`.
+      shortcut:   { windows: ['ctrl', 'shift', 'f'], mac: ['meta', 'shift', 'f'] },
       icon:       'icon-comment',
 
       /**
